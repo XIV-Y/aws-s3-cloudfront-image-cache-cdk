@@ -53,8 +53,7 @@ export class S3CloudfrontImageStack extends cdk.Stack {
       principals: [oai.grantPrincipal],
     }));
 
-    // CloudFrontディストリビューションの設定
-    // 3分間のキャッシュを設定
+    // CloudFrontディストリビューションの設定（3分間のキャッシュを設定）
     const customCachePolicy = new cloudfront.CachePolicy(this, 'CustomCachePolicy', {
       cachePolicyName: 'ThreeMinuteCache',
       defaultTtl: cdk.Duration.seconds(180),
@@ -70,7 +69,7 @@ export class S3CloudfrontImageStack extends cdk.Stack {
           originAccessIdentity: oai,
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        cachePolicy: customCachePolicy, // ←ここを変更
+        cachePolicy: customCachePolicy,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
         responseHeadersPolicy: cloudfront.ResponseHeadersPolicy.CORS_ALLOW_ALL_ORIGINS,
       },
