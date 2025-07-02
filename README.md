@@ -2,6 +2,8 @@
 
 S3バケットとCloudFrontを使用した画像配信システム。キャッシュありとキャッシュなしの動作比較ができます。
 
+![名称未設定ファイル drawio (4)](https://github.com/user-attachments/assets/df472f3c-8945-485c-b983-4d24d781c65e)
+
 ## 前提条件
 
 - AWS CLIが設定済みであること
