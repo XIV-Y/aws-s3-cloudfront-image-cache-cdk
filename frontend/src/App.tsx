@@ -12,8 +12,8 @@ function App() {
   const cloudfrontUrl = import.meta.env.VITE_CLOUDFRONT_URL;
 
   // 画像ファイル名のリスト
-  const cachedImageFiles = ["IMG_20250624_134720.jpg"];
-  const noCacheImageFiles = ["IMG_20250624_134720.jpg"];
+  const cachedImageFiles = [""];
+  const noCacheImageFiles = [""];
 
   useEffect(() => {
     const allImages: ImageItem[] = [
