@@ -1,8 +1,6 @@
-# S3 CloudFront Image Viewer
+# AWS CDK + Ansible EC2 Setup
 
-S3バケットとCloudFrontを使用した画像配信システム。キャッシュありとキャッシュなしの動作比較ができます。
-
-![名称未設定ファイル drawio (4)](https://github.com/user-attachments/assets/df472f3c-8945-485c-b983-4d24d781c65e)
+AWS CDKでPrivate SubnetにEC2を配置し、SSM経由でAnsibleを使用して環境構築を行う。
 
 ## 前提条件
 
@@ -14,41 +12,87 @@ S3バケットとCloudFrontを使用した画像配信システム。キャッ�
 ### 1. AWSリソースのデプロイ
 
 ```bash
-cd aws
 npm install
-cdk deploy
+npx cdk deploy
 ```
 
-### 2. デプロイ後の設定
+デプロイ完了後、インスタンスIDを確認する：
+```
+Outputs:
+Ec2PrivateSubnetCdkStack.InstanceId = i-xxxxxxxxxx
+Ec2PrivateSubnetCdkStack.SSMSessionCommand = aws ssm start-session --target i-xxxxxxxxxx
+```
 
-#### S3バケットの設定
-- CDK完了後に、no-cacheバケットに`/no-cache`フォルダを作成
-- 手動で各バケットに画像を保存する
+### 2. Ansibleファイルの送信
 
-#### フロントエンド設定
+#### プレイブックファイルの送信
 ```bash
-cd frontend
-npm install
+PLAYBOOK_CONTENT=$(base64 -w 0 ansible/playbook.yml)
+aws ssm send-command \
+    --instance-ids "i-xxxxxxxxxx" \
+    --document-name "AWS-RunShellScript" \
+    --parameters "commands=[\"echo '$PLAYBOOK_CONTENT' | base64 -d > /tmp/playbook.yml\"]"
 ```
 
-- `.env`ファイルを作成し、`VITE_CLOUDFRONT_URL`にCloudFrontのURLを設定
-- `App.tsx`の画像配列にアップロードしたファイル名を設定
-
-```typescript
-const cachedImageFiles = ["your-image.jpg"];
-const noCacheImageFiles = ["your-image.jpg"];
+#### 設定ファイルの送信
+```bash
+CONFIG_CONTENT=$(base64 -w 0 ansible/ansible.cfg)
+aws ssm send-command \
+    --instance-ids "i-xxxxxxxxxx" \
+    --document-name "AWS-RunShellScript" \
+    --parameters "commands=[\"echo '$CONFIG_CONTENT' | base64 -d > /tmp/ansible.cfg\"]"
 ```
 
-### 3. アプリケーション起動
+#### インベントリファイルの送信
+```bash
+INVENTORY_CONTENT=$(base64 -w 0 ansible/inventory.ini)
+aws ssm send-command \
+    --instance-ids "i-xxxxxxxxxx" \
+    --document-name "AWS-RunShellScript" \
+    --parameters "commands=[\"echo '$INVENTORY_CONTENT' | base64 -d > /tmp/inventory.ini\"]"
+```
+
+### 3. EC2インスタンスに接続
 
 ```bash
-npm run dev
+aws ssm start-session --target i-xxxxxxxxxx
 ```
 
-### 4. キャッシュ動作確認
+### 4. Ansible実行とテスト
 
-- 数回リロードしてブラウザの開発者ツールでレスポンスヘッダーを確認
-- `x-cache: Hit from cloudfront` → キャッシュ成功
-- `x-cache: Miss from cloudfront` → キャッシュなし
-- 3分後に再取得してキャッシュが更新されているか確認
-- キャッシュ期間中に、同一ファイル名で違う画像をS3バケットにアップロードして、キャッシュ中は画像が変わらないことを確認
+#### 初期状態確認
+```bash
+# SLコマンドがないことを確認
+sl
+# command not found が表示されることを確認
+```
+
+#### Ansibleファイル確認
+```bash
+cd /tmp
+ls -la
+# ansible系ファイルがあることを確認
+```
+
+#### Ansibleプレイブック実行
+```bash
+ansible-playbook -c local playbook.yml
+```
+
+#### 結果確認
+```bash
+# SLコマンドが実行できることを確認
+sl
+```
+
+### 5. 動作確認
+
+- `/opt/myapp/` ディレクトリが作成されていることを確認
+- 設定ファイルとスクリプトが配置されていることを確認
+- systemdサービスが有効になっていることを確認
+
+```bash
+ls -la /opt/myapp/
+cat /opt/myapp/config.conf
+sudo systemctl status myapp-demo
+```
